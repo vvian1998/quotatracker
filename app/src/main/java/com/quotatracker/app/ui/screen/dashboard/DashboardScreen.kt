@@ -115,9 +115,9 @@ fun DashboardScreen(
                         mobileBytes = uiState.deviceSummary.totalMobile,
                         wifiBytes = uiState.deviceSummary.totalWifi,
                         subtitleLabel = when (uiState.selectedPeriod) {
-                            UsagePeriod.DAILY -> "Kuota Hari Ini"
-                            UsagePeriod.WEEKLY -> "Kuota Minggu Ini"
-                            UsagePeriod.MONTHLY -> "Kuota Bulan Ini"
+                            UsagePeriod.DAILY -> "Pemakaian Hari Ini • Batas Referensi Bulanan"
+                            UsagePeriod.WEEKLY -> "Pemakaian Minggu Ini • Batas Referensi Bulanan"
+                            UsagePeriod.MONTHLY -> "Pemakaian Siklus Bulanan"
                         }
                     )
                 }
