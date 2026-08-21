@@ -33,7 +33,7 @@ class AppUsageHelper(private val context: Context) {
     fun getCurrentForegroundPackage(): String? {
         val usm = usageStatsManager ?: return null
         val endTime = System.currentTimeMillis()
-        val startTime = endTime - 30_000L // 30s window
+        val startTime = endTime - 60_000L // 60s rolling window
 
         return try {
             val events = usm.queryEvents(startTime, endTime)
@@ -43,18 +43,24 @@ class AppUsageHelper(private val context: Context) {
 
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
-                when (event.eventType) {
-                    UsageEvents.Event.ACTIVITY_RESUMED -> {
+                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                    if (event.timeStamp >= lastEventTime) {
                         lastForegroundPkg = event.packageName
                         lastEventTime = event.timeStamp
                     }
-                    UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED -> {
-                        if (event.packageName == lastForegroundPkg && event.timeStamp >= lastEventTime) {
-                            lastForegroundPkg = null
-                        }
-                    }
                 }
             }
+
+            // Fallback if no event in the last 60s (e.g. user watching long video in YouTube)
+            if (lastForegroundPkg == null) {
+                val stats = usm.queryUsageStats(
+                    UsageStatsManager.INTERVAL_DAILY,
+                    endTime - (1000 * 60 * 120), // 2 hours
+                    endTime
+                )
+                lastForegroundPkg = stats?.maxByOrNull { it.lastTimeUsed }?.packageName
+            }
+
             lastForegroundPkg
         } catch (e: Exception) {
             Log.w(tag, "Failed to query foreground events: ${e.message}")

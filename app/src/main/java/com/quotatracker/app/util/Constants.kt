@@ -21,7 +21,7 @@ object Constants {
 
     // Polling Intervals
     const val SPEED_MONITOR_INTERVAL_MS = 1000L
-    const val FOREGROUND_POLL_INTERVAL_MS = 4000L
+    const val FOREGROUND_POLL_INTERVAL_MS = 1500L
     const val DATA_USAGE_SYNC_INTERVAL_MIN = 15L
 
     // Intent Actions & Extras

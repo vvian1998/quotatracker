@@ -12,6 +12,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
+import android.net.TrafficStats
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -68,6 +69,10 @@ class FloatingBubbleService : Service() {
     private var windowParams: WindowManager.LayoutParams? = null
     private var currentTrackedPackage: String? = null
     private var currentTrackedUid: Int = -1
+    private var baselineTodayUsage: Long = 0L
+    private var baselineTrafficBytes: Long = 0L
+    private var prevTrafficBytes: Long = 0L
+    private var prevTimestamp: Long = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -286,25 +291,36 @@ class FloatingBubbleService : Service() {
                             if (appInfo != null) {
                                 currentTrackedUid = appInfo.uid
                                 textAppName?.text = appInfo.appName
-                            }
-                        }
 
-                        if (currentTrackedUid > 0) {
-                            val todayUsage = withContext(Dispatchers.IO) {
-                                dataUsageRepository.getTodayUsageForUid(currentTrackedUid)
+                                // Initialize baseline live traffic from kernel sockets
+                                val curRx = TrafficStats.getUidRxBytes(currentTrackedUid)
+                                val curTx = TrafficStats.getUidTxBytes(currentTrackedUid)
+                                val initialTraffic = if (curRx >= 0) curRx + curTx.coerceAtLeast(0L) else 0L
+
+                                val baseUsage = withContext(Dispatchers.IO) {
+                                    dataUsageRepository.getTodayUsageForUid(currentTrackedUid)
+                                }
+
+                                baselineTodayUsage = baseUsage
+                                baselineTrafficBytes = initialTraffic
+                                prevTrafficBytes = initialTraffic
+                                prevTimestamp = System.currentTimeMillis()
+
+                                textUsage?.text = "↓ ${DataFormatter.formatBytes(baseUsage)}"
                             }
-                            textUsage?.text = "↓ ${DataFormatter.formatBytes(todayUsage)}"
+                        } else if (currentTrackedUid > 0) {
+                            // Same app is active - compute realtime live bytes & speed
+                            updateLiveUsageAndSpeed()
                         }
                     } else if (foregroundPackage == packageName) {
                         textAppName?.text = "QuotaTracker"
                         textUsage?.text = "Aktif memantau"
+                        currentTrackedPackage = foregroundPackage
+                        currentTrackedUid = -1
                     } else {
-                        // Retain last known package info and update usage counter if available
+                        // When foregroundPackage is temporarily null/transient, keep updating current tracked app if active
                         if (currentTrackedUid > 0) {
-                            val todayUsage = withContext(Dispatchers.IO) {
-                                dataUsageRepository.getTodayUsageForUid(currentTrackedUid)
-                            }
-                            textUsage?.text = "↓ ${DataFormatter.formatBytes(todayUsage)}"
+                            updateLiveUsageAndSpeed()
                         }
                     }
                 } catch (e: Exception) {
@@ -313,6 +329,38 @@ class FloatingBubbleService : Service() {
 
                 delay(Constants.FOREGROUND_POLL_INTERVAL_MS)
             }
+        }
+    }
+
+    private suspend fun updateLiveUsageAndSpeed() {
+        val curRx = TrafficStats.getUidRxBytes(currentTrackedUid)
+        val curTx = TrafficStats.getUidTxBytes(currentTrackedUid)
+        val now = System.currentTimeMillis()
+
+        if (curRx >= 0) {
+            val curTotal = curRx + curTx.coerceAtLeast(0L)
+            val delta = (curTotal - baselineTrafficBytes).coerceAtLeast(0L)
+            val currentDisplayUsage = baselineTodayUsage + delta
+
+            val timeDeltaSec = (now - prevTimestamp) / 1000.0
+            val speedBps = if (timeDeltaSec > 0 && prevTrafficBytes > 0 && curTotal >= prevTrafficBytes) {
+                ((curTotal - prevTrafficBytes) / timeDeltaSec).toLong()
+            } else 0L
+
+            prevTrafficBytes = curTotal
+            prevTimestamp = now
+
+            if (speedBps > 1024L) {
+                textUsage?.text = "↓ ${DataFormatter.formatSpeed(speedBps)} • ${DataFormatter.formatBytes(currentDisplayUsage)}"
+            } else {
+                textUsage?.text = "↓ ${DataFormatter.formatBytes(currentDisplayUsage)}"
+            }
+        } else {
+            // Fallback for devices where getUidRxBytes returns UNSUPPORTED
+            val todayUsage = withContext(Dispatchers.IO) {
+                dataUsageRepository.getTodayUsageForUid(currentTrackedUid)
+            }
+            textUsage?.text = "↓ ${DataFormatter.formatBytes(todayUsage)}"
         }
     }
 
