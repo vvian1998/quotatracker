@@ -264,7 +264,7 @@ fun AppDetailScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "Set Kuota Limit Aplikasi",
+                                    text = "Referensi Kuota Aplikasi",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = TextPrimary
@@ -275,6 +275,13 @@ fun AppDetailScreen(
                                     color = TealPrimary,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
+                                )
+
+                                Text(
+                                    text = "Informasi saja; tidak membatasi koneksi aplikasi.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary,
+                                    fontSize = 11.sp
                                 )
                             }
 

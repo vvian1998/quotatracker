@@ -133,11 +133,14 @@ class FloatingBubbleService : Service() {
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        // Overlay tracking is a user-enabled, visible feature. It is not a
+        // data-sync service, so use specialUse on Android 14+ and avoid the
+        // Android 15 dataSync timeout budget.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
                 Constants.NOTIFICATION_BUBBLE_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
             )
         } else {
             startForeground(Constants.NOTIFICATION_BUBBLE_ID, notification)
@@ -373,6 +376,14 @@ class FloatingBubbleService : Service() {
             dp,
             resources.displayMetrics
         ).toInt()
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        // Defensive handling for platform/service-type timeout callbacks.
+        stoppedIntentionally = true
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     override fun onDestroy() {

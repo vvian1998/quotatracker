@@ -57,16 +57,19 @@ class NetworkStatsHelper(private val context: Context) {
     }
 
     /**
-     * Query device-wide summary for mobile and wifi
+     * Query device-wide summary for mobile and wifi.
+     * A query that returns no data is valid; a query that fails is surfaced so
+     * the UI can distinguish an error from a genuine zero-usage result.
      */
     fun queryDeviceSummary(startTime: Long, endTime: Long): DeviceNetworkSummary {
-        val nsm = networkStatsManager ?: return DeviceNetworkSummary()
+        val nsm = networkStatsManager
+            ?: throw IllegalStateException("NetworkStats tidak tersedia")
         var mobileRx = 0L
         var mobileTx = 0L
         var wifiRx = 0L
         var wifiTx = 0L
+        var successfulQueries = 0
 
-        // Mobile data
         try {
             val mobileBucket = nsm.querySummaryForDevice(
                 ConnectivityManager.TYPE_MOBILE,
@@ -76,11 +79,11 @@ class NetworkStatsHelper(private val context: Context) {
             )
             mobileRx = mobileBucket.rxBytes
             mobileTx = mobileBucket.txBytes
+            successfulQueries++
         } catch (e: Exception) {
-            Log.w(tag, "Failed to query mobile device summary: ${e.message}")
+            Log.w(tag, "Failed to query mobile device summary: " + e.message)
         }
 
-        // WiFi data
         try {
             val wifiBucket = nsm.querySummaryForDevice(
                 ConnectivityManager.TYPE_WIFI,
@@ -90,76 +93,98 @@ class NetworkStatsHelper(private val context: Context) {
             )
             wifiRx = wifiBucket.rxBytes
             wifiTx = wifiBucket.txBytes
+            successfulQueries++
         } catch (e: Exception) {
-            Log.w(tag, "Failed to query wifi device summary: ${e.message}")
+            Log.w(tag, "Failed to query wifi device summary: " + e.message)
         }
 
+        if (successfulQueries == 0) {
+            throw IllegalStateException("NetworkStats tidak tersedia atau Usage Access ditolak")
+        }
         return DeviceNetworkSummary(mobileRx, mobileTx, wifiRx, wifiTx)
     }
 
     /**
-     * Query all apps usage across Mobile and WiFi interfaces
+     * Query all apps usage across Mobile and WiFi interfaces.
      */
     fun queryAllAppsUsage(startTime: Long, endTime: Long): List<RawAppUsage> {
-        val nsm = networkStatsManager ?: return emptyList()
+        val nsm = networkStatsManager
+            ?: throw IllegalStateException("NetworkStats tidak tersedia")
         val usageMap = mutableMapOf<Int, RawAppUsage>()
+        var successfulQueries = 0
 
-        // 1. Mobile
-        queryNetworkTypeSummary(nsm, ConnectivityManager.TYPE_MOBILE, startTime, endTime) { uid, rx, tx ->
-            val entry = usageMap.getOrPut(uid) { RawAppUsage(uid) }
-            entry.mobileRx += rx
-            entry.mobileTx += tx
+        if (queryNetworkTypeSummary(nsm, ConnectivityManager.TYPE_MOBILE, startTime, endTime) { uid, rx, tx ->
+                val entry = usageMap.getOrPut(uid) { RawAppUsage(uid) }
+                entry.mobileRx += rx
+                entry.mobileTx += tx
+            }
+        ) {
+            successfulQueries++
         }
 
-        // 2. WiFi
-        queryNetworkTypeSummary(nsm, ConnectivityManager.TYPE_WIFI, startTime, endTime) { uid, rx, tx ->
-            val entry = usageMap.getOrPut(uid) { RawAppUsage(uid) }
-            entry.wifiRx += rx
-            entry.wifiTx += tx
+        if (queryNetworkTypeSummary(nsm, ConnectivityManager.TYPE_WIFI, startTime, endTime) { uid, rx, tx ->
+                val entry = usageMap.getOrPut(uid) { RawAppUsage(uid) }
+                entry.wifiRx += rx
+                entry.wifiTx += tx
+            }
+        ) {
+            successfulQueries++
         }
 
+        if (successfulQueries == 0) {
+            throw IllegalStateException("NetworkStats tidak tersedia atau Usage Access ditolak")
+        }
         return usageMap.values.filter { it.grandTotal > 0 }
     }
 
     /**
-     * Query per-app detailed usage breakdown (mobile vs wifi, foreground vs background)
+     * Query per-app detailed usage breakdown (mobile vs wifi, foreground vs background).
      */
     fun queryAppDetailUsage(uid: Int, startTime: Long, endTime: Long): RawAppDetailUsage {
-        val nsm = networkStatsManager ?: return RawAppDetailUsage(uid)
+        val nsm = networkStatsManager
+            ?: throw IllegalStateException("NetworkStats tidak tersedia")
         val result = RawAppDetailUsage(uid)
+        var successfulQueries = 0
 
-        // Mobile detail
-        queryDetailsForUidAndType(nsm, ConnectivityManager.TYPE_MOBILE, uid, startTime, endTime) { rx, tx, state ->
-            result.mobileRx += rx
-            result.mobileTx += tx
-            when (state) {
-                NetworkStats.Bucket.STATE_FOREGROUND -> {
-                    result.foregroundRx += rx
-                    result.foregroundTx += tx
-                }
-                else -> {
-                    result.backgroundRx += rx
-                    result.backgroundTx += tx
+        if (queryDetailsForUidAndType(nsm, ConnectivityManager.TYPE_MOBILE, uid, startTime, endTime) { rx, tx, state ->
+                result.mobileRx += rx
+                result.mobileTx += tx
+                when (state) {
+                    NetworkStats.Bucket.STATE_FOREGROUND -> {
+                        result.foregroundRx += rx
+                        result.foregroundTx += tx
+                    }
+                    else -> {
+                        result.backgroundRx += rx
+                        result.backgroundTx += tx
+                    }
                 }
             }
+        ) {
+            successfulQueries++
         }
 
-        // WiFi detail
-        queryDetailsForUidAndType(nsm, ConnectivityManager.TYPE_WIFI, uid, startTime, endTime) { rx, tx, state ->
-            result.wifiRx += rx
-            result.wifiTx += tx
-            when (state) {
-                NetworkStats.Bucket.STATE_FOREGROUND -> {
-                    result.foregroundRx += rx
-                    result.foregroundTx += tx
-                }
-                else -> {
-                    result.backgroundRx += rx
-                    result.backgroundTx += tx
+        if (queryDetailsForUidAndType(nsm, ConnectivityManager.TYPE_WIFI, uid, startTime, endTime) { rx, tx, state ->
+                result.wifiRx += rx
+                result.wifiTx += tx
+                when (state) {
+                    NetworkStats.Bucket.STATE_FOREGROUND -> {
+                        result.foregroundRx += rx
+                        result.foregroundTx += tx
+                    }
+                    else -> {
+                        result.backgroundRx += rx
+                        result.backgroundTx += tx
+                    }
                 }
             }
+        ) {
+            successfulQueries++
         }
 
+        if (successfulQueries == 0) {
+            throw IllegalStateException("NetworkStats tidak tersedia atau Usage Access ditolak")
+        }
         return result
     }
 
@@ -169,9 +194,9 @@ class NetworkStatsHelper(private val context: Context) {
         startTime: Long,
         endTime: Long,
         crossinline onBucket: (uid: Int, rx: Long, tx: Long) -> Unit
-    ) {
+    ): Boolean {
         var stats: NetworkStats? = null
-        try {
+        return try {
             stats = nsm.querySummary(networkType, null, startTime, endTime)
             val bucket = NetworkStats.Bucket()
             while (stats.hasNextBucket()) {
@@ -180,13 +205,15 @@ class NetworkStatsHelper(private val context: Context) {
                     onBucket(bucket.uid, bucket.rxBytes, bucket.txBytes)
                 }
             }
+            true
         } catch (e: Exception) {
-            Log.w(tag, "querySummary error for type $networkType: ${e.message}")
+            Log.w(tag, "querySummary error for type " + networkType + ": " + e.message)
+            false
         } finally {
             try {
                 stats?.close()
-            } catch (e: Exception) {
-                // Ignore close error
+            } catch (_: Exception) {
+                // Ignore close error.
             }
         }
     }
@@ -198,22 +225,24 @@ class NetworkStatsHelper(private val context: Context) {
         startTime: Long,
         endTime: Long,
         crossinline onBucket: (rx: Long, tx: Long, state: Int) -> Unit
-    ) {
+    ): Boolean {
         var stats: NetworkStats? = null
-        try {
+        return try {
             stats = nsm.queryDetailsForUid(networkType, null, startTime, endTime, uid)
             val bucket = NetworkStats.Bucket()
             while (stats.hasNextBucket()) {
                 stats.getNextBucket(bucket)
                 onBucket(bucket.rxBytes, bucket.txBytes, bucket.state)
             }
+            true
         } catch (e: Exception) {
-            Log.w(tag, "queryDetailsForUid error for uid $uid, type $networkType: ${e.message}")
+            Log.w(tag, "queryDetailsForUid error for uid " + uid + ", type " + networkType + ": " + e.message)
+            false
         } finally {
             try {
                 stats?.close()
-            } catch (e: Exception) {
-                // Ignore close error
+            } catch (_: Exception) {
+                // Ignore close error.
             }
         }
     }

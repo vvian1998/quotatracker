@@ -84,8 +84,11 @@ object PermissionUtils {
      * Check if all required permissions are granted
      */
     fun hasAllRequiredPermissions(context: Context): Boolean {
-        return hasUsageStatsPermission(context) &&
-                hasOverlayPermission(context) &&
-                hasNotificationPermission(context)
+        // Usage Access is the only permission required for core monitoring.
+        return hasUsageStatsPermission(context)
+    }
+
+    fun hasOptionalPermissions(context: Context): Boolean {
+        return hasOverlayPermission(context) && hasNotificationPermission(context)
     }
 }

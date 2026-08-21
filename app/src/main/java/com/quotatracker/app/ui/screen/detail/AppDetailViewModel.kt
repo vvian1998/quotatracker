@@ -3,6 +3,7 @@ package com.quotatracker.app.ui.screen.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.quotatracker.app.data.local.preferences.UserPreferences
 import com.quotatracker.app.data.repository.DataUsageRepository
 import com.quotatracker.app.data.repository.QuotaRepository
 import com.quotatracker.app.domain.model.AppDataUsage
@@ -12,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,7 +31,8 @@ data class AppDetailUiState(
 class AppDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val dataUsageRepository: DataUsageRepository,
-    private val quotaRepository: QuotaRepository
+    private val quotaRepository: QuotaRepository,
+    private val userPreferences: UserPreferences
 ) : ViewModel() {
 
     private val uid: Int = checkNotNull(savedStateHandle["uid"])
@@ -44,8 +47,9 @@ class AppDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            // 1. App Detail (Current Month)
-            dataUsageRepository.getAppDetail(uid, UsagePeriod.MONTHLY).collect { usage ->
+            // 1. App Detail (Current billing cycle)
+            val cycleDay = userPreferences.quotaCycleDayFlow.first()
+            dataUsageRepository.getAppDetail(uid, UsagePeriod.MONTHLY, cycleDay).collect { usage ->
                 _uiState.value = _uiState.value.copy(
                     appUsage = usage,
                     isLoading = false

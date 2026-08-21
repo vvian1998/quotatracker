@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.ChevronRight
@@ -47,6 +48,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.quotatracker.app.ui.theme.BackgroundDark
 import com.quotatracker.app.ui.theme.CardBackground
 import com.quotatracker.app.ui.theme.CardBackgroundElevated
@@ -148,11 +152,24 @@ fun SettingsScreen(
                         onValueChange = { viewModel.setMonthlyQuotaGb(it) },
                         valueRange = 1.0f..100.0f,
                         steps = 98,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Geser batas kuota dalam gigabyte"
+                        },
                         colors = SliderDefaults.colors(
                             thumbColor = TealPrimary,
                             activeTrackColor = TealPrimary,
                             inactiveTrackColor = CardBackgroundElevated
                         )
+                    )
+
+                    OutlinedTextField(
+                        value = uiState.monthlyQuotaInputGb,
+                        onValueChange = viewModel::setMonthlyQuotaInput,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Input manual (GB)") },
+                        supportingText = { Text("Masukkan 1–100 GB, misalnya 7.5") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -176,6 +193,21 @@ fun SettingsScreen(
                             color = TealPrimary
                         )
                     }
+
+                    Slider(
+                        value = uiState.cycleDay.toFloat(),
+                        onValueChange = { viewModel.setCycleDay(it.toInt()) },
+                        valueRange = 1f..28f,
+                        steps = 26,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Tanggal reset kuota, dari 1 sampai 28"
+                        },
+                        colors = SliderDefaults.colors(
+                            thumbColor = TealPrimary,
+                            activeTrackColor = TealPrimary,
+                            inactiveTrackColor = CardBackgroundElevated
+                        )
+                    )
                 }
             }
 
@@ -213,11 +245,20 @@ fun SettingsScreen(
                             color = TextSecondary,
                             fontSize = 12.sp
                         )
+                        Text(
+                            text = if (uiState.isBubbleEnabled) "Status saat ini: aktif" else "Status saat ini: nonaktif",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TealPrimary,
+                            fontSize = 12.sp
+                        )
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Switch(
+                        modifier = Modifier.semantics {
+                            contentDescription = "Aktifkan atau nonaktifkan floating bubble"
+                        },
                         checked = uiState.isBubbleEnabled,
                         onCheckedChange = { viewModel.setBubbleEnabled(it) },
                         colors = SwitchDefaults.colors(
@@ -257,6 +298,9 @@ fun SettingsScreen(
                         )
 
                         Switch(
+                            modifier = Modifier.semantics {
+                                contentDescription = "Aktifkan atau nonaktifkan notifikasi peringatan kuota"
+                            },
                             checked = uiState.isWarningEnabled,
                             onCheckedChange = { viewModel.setWarningEnabled(it) },
                             colors = SwitchDefaults.colors(
@@ -342,6 +386,9 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Switch(
+                        modifier = Modifier.semantics {
+                            contentDescription = "Mulai monitoring otomatis setelah perangkat menyala"
+                        },
                         checked = uiState.isAutoStartEnabled,
                         onCheckedChange = { viewModel.setAutoStartEnabled(it) },
                         colors = SwitchDefaults.colors(

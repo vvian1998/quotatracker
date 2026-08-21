@@ -9,7 +9,7 @@
 
     <!-- Foreground Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Auto-start on boot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -23,10 +23,13 @@
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- Package Visibility for Android 11+ (API 30+) to resolve app info from UID -->
-    <uses-permission
-        android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
+    <!-- Only launchable apps are visible; apps without a launcher entry fall back to their UID. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:name=".QuotaTrackerApp"
@@ -49,17 +52,15 @@
             </intent-filter>
         </activity>
 
-        <!-- Foreground Data Monitor Service -->
-        <service
-            android:name=".service.DataMonitorService"
-            android:foregroundServiceType="dataSync"
-            android:exported="false" />
-
-        <!-- Floating Bubble Overlay Service -->
+        <!-- User-enabled floating overlay; periodic monitoring uses WorkManager. -->
         <service
             android:name=".service.FloatingBubbleService"
-            android:foregroundServiceType="dataSync"
-            android:exported="false" />
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="user-enabled floating data usage overlay" />
+        </service>
 
         <!-- Boot Receiver for Auto-start -->
         <receiver
@@ -67,6 +68,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 

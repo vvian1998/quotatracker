@@ -29,7 +29,7 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "quota_tracker_db"
-        ).fallbackToDestructiveMigration().build()
+        ).addMigrations(AppDatabase.MIGRATION_1_2).build()
     }
 
     @Provides

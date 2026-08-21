@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -62,7 +64,7 @@ fun DashboardScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.ChatBubbleOutline,
-                    contentDescription = "Toggle Floating Bubble",
+                    contentDescription = if (uiState.isBubbleEnabled) "Floating bubble aktif" else "Floating bubble nonaktif",
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -119,6 +121,13 @@ fun DashboardScreen(
                         }
                     )
                 }
+
+                Text(
+                    text = "Catatan: total perangkat dapat berbeda dari jumlah aplikasi karena NetworkStats juga mencakup komponen sistem dan UID yang tidak terlihat.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
                 Spacer(modifier = Modifier.height(22.dp))
             }
 
@@ -165,6 +174,31 @@ fun DashboardScreen(
             }
 
             // App Usage List Items
+            uiState.errorMessage?.let { message ->
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextPrimary,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { viewModel.loadData() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Lime)
+                        ) {
+                            Text(text = "Coba lagi", color = Ink)
+                        }
+                    }
+                }
+            }
+
             if (uiState.isLoading && uiState.appUsageList.isEmpty()) {
                 item {
                     Box(

@@ -17,23 +17,24 @@ import com.quotatracker.app.util.Constants
 import com.quotatracker.app.util.PermissionUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class DashboardUiState(
     val selectedPeriod: UsagePeriod = UsagePeriod.DAILY,
+    val cycleDay: Int = Constants.DEFAULT_CYCLE_DAY,
     val appUsageList: List<AppDataUsage> = emptyList(),
     val deviceSummary: DeviceNetworkSummary = DeviceNetworkSummary(),
     val quotaSetting: QuotaSetting = QuotaSetting(),
     val isBubbleEnabled: Boolean = false,
     val isLoading: Boolean = true,
-    val maxUsageBytes: Long = 0L
+    val maxUsageBytes: Long = 0L,
+    val errorMessage: String? = null
 )
 
 @HiltViewModel
@@ -46,10 +47,13 @@ class DashboardViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+    private var loadJob: Job? = null
+    private var cycleDayInitialized = false
 
     init {
-        loadData()
         observeBubbleState()
+        observeCycleDay()
+        loadData()
     }
 
     private fun observeBubbleState() {
@@ -60,48 +64,63 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    private fun observeCycleDay() {
+        viewModelScope.launch {
+            userPreferences.quotaCycleDayFlow.collect { day ->
+                _uiState.value = _uiState.value.copy(cycleDay = day)
+                if (cycleDayInitialized) loadData()
+                cycleDayInitialized = true
+            }
+        }
+    }
+
     fun setPeriod(period: UsagePeriod) {
+        if (_uiState.value.selectedPeriod == period) return
         _uiState.value = _uiState.value.copy(selectedPeriod = period)
         loadData()
     }
 
     fun loadData() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
-            // 1. Quota
-            try {
-                val quota = quotaRepository.getGlobalQuota().first()
-                _uiState.value = _uiState.value.copy(quotaSetting = quota)
-            } catch (e: Exception) {
-                // Keep existing quota if error
-            }
-        }
-
-        viewModelScope.launch {
-            val period = _uiState.value.selectedPeriod
-            // 2. Device summary (Download / Upload)
-            dataUsageRepository.getDeviceSummary(period).collect { summary ->
-                _uiState.value = _uiState.value.copy(deviceSummary = summary)
-            }
-        }
-
-        viewModelScope.launch {
-            val period = _uiState.value.selectedPeriod
-            // 3. Apps usage list
-            dataUsageRepository.getAppUsageForPeriod(period).collect { list ->
-                val max = list.firstOrNull()?.totalBytes ?: 0L
+            if (!PermissionUtils.hasUsageStatsPermission(context)) {
                 _uiState.value = _uiState.value.copy(
-                    appUsageList = list,
+                    isLoading = false,
+                    errorMessage = "Izin Usage Access belum aktif. Aktifkan izin tersebut untuk membaca data penggunaan."
+                )
+                return@launch
+            }
+
+            try {
+                val period = _uiState.value.selectedPeriod
+                val cycleDay = userPreferences.quotaCycleDayFlow.first()
+                val quota = quotaRepository.getGlobalQuota().first()
+                val summary = dataUsageRepository
+                    .getDeviceSummary(period, cycleDay)
+                    .first()
+                val appUsage = dataUsageRepository
+                    .getAppUsageForPeriod(period, cycleDay)
+                    .first()
+                val max = appUsage.firstOrNull()?.totalBytes ?: 0L
+
+                _uiState.value = _uiState.value.copy(
+                    cycleDay = cycleDay,
+                    quotaSetting = quota,
+                    deviceSummary = summary,
+                    appUsageList = appUsage,
                     maxUsageBytes = max,
-                    isLoading = false
+                    isLoading = false,
+                    errorMessage = null
+                )
+                dataUsageRepository.syncTodayUsageToDb()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "Gagal membaca NetworkStats. Periksa Usage Access lalu coba lagi."
                 )
             }
-        }
-
-        // Trigger background snapshot to Room DB
-        viewModelScope.launch {
-            dataUsageRepository.syncTodayUsageToDb()
         }
     }
 

@@ -1,7 +1,6 @@
 package com.quotatracker.app.ui.screen.onboarding
 
 import android.Manifest
-import android.content.Context
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -144,7 +143,7 @@ fun PermissionScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "QuotaTracker memerlukan izin berikut agar dapat memantau kuota dan menampilkan floating bubble.",
+                text = "Usage Access adalah izin wajib untuk membaca statistik penggunaan. Overlay dan notifikasi bersifat opsional untuk fitur tambahan.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary,
                 modifier = Modifier.padding(horizontal = 8.dp),
@@ -155,6 +154,7 @@ fun PermissionScreen(
 
             // 1. Usage Stats Permission Card
             PermissionCard(
+                required = true,
                 icon = Icons.Default.DataUsage,
                 title = "Akses Penggunaan Data",
                 description = "Diperlukan untuk membaca kuota yang dihabiskan oleh masing-masing aplikasi.",
@@ -166,6 +166,7 @@ fun PermissionScreen(
 
             // 2. Overlay Permission Card
             PermissionCard(
+                required = false,
                 icon = Icons.Default.PictureInPicture,
                 title = "Tampilkan di Atas Aplikasi",
                 description = "Diperlukan untuk menampilkan balon melayang (floating bubble) saat membuka aplikasi lain.",
@@ -177,6 +178,7 @@ fun PermissionScreen(
 
             // 3. Notification Permission Card
             PermissionCard(
+                required = false,
                 icon = Icons.Default.Notifications,
                 title = "Notifikasi & Peringatan",
                 description = "Diperlukan untuk menampilkan status pemantau dan peringatan saat kuota hampir habis.",
@@ -219,6 +221,7 @@ fun PermissionScreen(
 
 @Composable
 private fun PermissionCard(
+    required: Boolean,
     icon: ImageVector,
     title: String,
     description: String,
@@ -293,7 +296,7 @@ private fun PermissionCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = description,
+                text = (if (required) "Wajib. " else "Opsional. ") + description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
             )

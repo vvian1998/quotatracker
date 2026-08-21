@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.quotatracker.app.data.local.preferences.UserPreferences
-import com.quotatracker.app.service.DataMonitorService
 import com.quotatracker.app.service.DataUsageSyncWorker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -20,17 +19,19 @@ class BootReceiver : BroadcastReceiver() {
     lateinit var userPreferences: UserPreferences
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            // Re-schedule WorkManager
-            DataUsageSyncWorker.schedule(context)
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
 
-            // Start foreground monitor service if auto-start is enabled
-            CoroutineScope(Dispatchers.IO).launch {
-                val autoStart = userPreferences.autoStartOnBootFlow.first()
-                if (autoStart) {
-                    val serviceIntent = Intent(context, DataMonitorService::class.java)
-                    context.startForegroundService(serviceIntent)
+        // WorkManager is the background monitor. No foreground service is
+        // launched from BOOT_COMPLETED, which is disallowed for dataSync on
+        // Android 15 and avoids a detached coroutine race.
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                if (userPreferences.autoStartOnBootFlow.first()) {
+                    DataUsageSyncWorker.schedule(context.applicationContext)
                 }
+            } finally {
+                pendingResult.finish()
             }
         }
     }

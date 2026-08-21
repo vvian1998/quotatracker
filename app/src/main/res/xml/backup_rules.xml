@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
+    <!-- Usage history and preferences can contain sensitive device/app data. -->
+    <exclude domain="database" path="quota_tracker_db" />
+    <exclude domain="file" path="datastore/quota_tracker_prefs.preferences_pb" />
 </full-backup-content>

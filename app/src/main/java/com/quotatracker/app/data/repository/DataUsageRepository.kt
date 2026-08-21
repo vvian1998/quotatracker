@@ -96,7 +96,7 @@ class DataUsageRepository(
         for (i in 6 downTo 0) {
             val epochDay = todayEpochDay - i
             val startMillis = DateUtils.epochDayToStartMillis(epochDay)
-            val endMillis = startMillis + DateUtils.MILLIS_PER_DAY - 1
+            val endMillis = DateUtils.epochDayToEndMillis(epochDay)
 
             val usage = networkStatsHelper.queryAppDetailUsage(uid, startMillis, endMillis)
             result.add(Pair(startMillis, usage.grandTotal))

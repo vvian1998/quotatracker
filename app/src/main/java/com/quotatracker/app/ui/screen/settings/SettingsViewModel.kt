@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quotatracker.app.data.local.preferences.UserPreferences
 import com.quotatracker.app.data.repository.QuotaRepository
+import com.quotatracker.app.service.DataUsageSyncWorker
 import com.quotatracker.app.service.FloatingBubbleService
 import com.quotatracker.app.util.Constants
 import com.quotatracker.app.util.DataFormatter
@@ -16,14 +17,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 data class SettingsUiState(
     val monthlyQuotaGb: Float = 5.0f,
-    val cycleDay: Int = 1,
+    val monthlyQuotaInputGb: String = "5.0",
+    val cycleDay: Int = Constants.DEFAULT_CYCLE_DAY,
     val isBubbleEnabled: Boolean = false,
     val isWarningEnabled: Boolean = true,
-    val warningPercent: Int = 80,
+    val warningPercent: Int = Constants.DEFAULT_WARNING_PERCENT,
     val isAutoStartEnabled: Boolean = true
 )
 
@@ -44,7 +47,11 @@ class SettingsViewModel @Inject constructor(
     private fun loadSettings() {
         viewModelScope.launch {
             userPreferences.globalQuotaBytesFlow.collect { bytes ->
-                _uiState.value = _uiState.value.copy(monthlyQuotaGb = DataFormatter.bytesToGb(bytes).toFloat())
+                val gb = DataFormatter.bytesToGb(bytes).toFloat()
+                _uiState.value = _uiState.value.copy(
+                    monthlyQuotaGb = gb,
+                    monthlyQuotaInputGb = formatGb(gb)
+                )
             }
         }
 
@@ -80,7 +87,28 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setMonthlyQuotaGb(gb: Float) {
-        _uiState.value = _uiState.value.copy(monthlyQuotaGb = gb)
+        val safeGb = gb.coerceIn(1.0f, 100.0f)
+        _uiState.value = _uiState.value.copy(
+            monthlyQuotaGb = safeGb,
+            monthlyQuotaInputGb = formatGb(safeGb)
+        )
+        saveGlobalQuota(safeGb)
+    }
+
+    fun setMonthlyQuotaInput(value: String) {
+        val normalized = value.replace(',', '.')
+        if (!normalized.matches(Regex("\\d{0,3}(\\.\\d{0,2})?"))) return
+
+        _uiState.value = _uiState.value.copy(monthlyQuotaInputGb = normalized)
+        normalized.toFloatOrNull()
+            ?.takeIf { it in 1.0f..100.0f }
+            ?.let { safeGb ->
+                _uiState.value = _uiState.value.copy(monthlyQuotaGb = safeGb)
+                saveGlobalQuota(safeGb)
+            }
+    }
+
+    private fun saveGlobalQuota(gb: Float) {
         val bytes = DataFormatter.gbToBytes(gb.toDouble())
         viewModelScope.launch {
             quotaRepository.setGlobalQuota(bytes, _uiState.value.warningPercent)
@@ -88,9 +116,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setCycleDay(day: Int) {
-        _uiState.value = _uiState.value.copy(cycleDay = day)
+        val safeDay = day.coerceIn(1, 28)
+        _uiState.value = _uiState.value.copy(cycleDay = safeDay)
         viewModelScope.launch {
-            userPreferences.setQuotaCycleDay(day)
+            userPreferences.setQuotaCycleDay(safeDay)
         }
     }
 
@@ -126,9 +155,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setWarningPercent(percent: Int) {
-        _uiState.value = _uiState.value.copy(warningPercent = percent)
+        val safePercent = percent.coerceIn(50, 95)
+        _uiState.value = _uiState.value.copy(warningPercent = safePercent)
         viewModelScope.launch {
-            userPreferences.setWarningPercent(percent)
+            userPreferences.setWarningPercent(safePercent)
         }
     }
 
@@ -136,6 +166,14 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isAutoStartEnabled = enabled)
         viewModelScope.launch {
             userPreferences.setAutoStartOnBoot(enabled)
+            if (enabled) {
+                DataUsageSyncWorker.schedule(context)
+            } else {
+                DataUsageSyncWorker.cancel(context)
+            }
         }
     }
+
+    private fun formatGb(gb: Float): String =
+        String.format(Locale.US, "%.2f", gb).trimEnd('0').trimEnd('.')
 }

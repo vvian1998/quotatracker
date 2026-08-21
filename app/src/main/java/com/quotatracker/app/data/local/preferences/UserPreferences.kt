@@ -20,6 +20,7 @@ class UserPreferences(private val context: Context) {
         val KEY_BUBBLE_ENABLED = booleanPreferencesKey("pref_bubble_enabled")
         val KEY_AUTO_START_BOOT = booleanPreferencesKey("pref_auto_start_boot")
         val KEY_WARNING_ENABLED = booleanPreferencesKey("pref_warning_enabled")
+        val KEY_WARNING_ACTIVE = booleanPreferencesKey("pref_warning_active")
         val KEY_WARNING_PERCENT = intPreferencesKey("pref_warning_percent")
         val KEY_QUOTA_CYCLE_DAY = intPreferencesKey("pref_quota_cycle_day")
         val KEY_GLOBAL_QUOTA_BYTES = longPreferencesKey("pref_global_quota_bytes")
@@ -36,6 +37,10 @@ class UserPreferences(private val context: Context) {
 
     val warningEnabledFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_WARNING_ENABLED] ?: true
+    }
+
+    val warningActiveFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_WARNING_ACTIVE] ?: false
     }
 
     val warningPercentFlow: Flow<Int> = context.dataStore.data.map { prefs ->
@@ -69,12 +74,20 @@ class UserPreferences(private val context: Context) {
     suspend fun setWarningEnabled(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[KEY_WARNING_ENABLED] = enabled
+            if (!enabled) prefs[KEY_WARNING_ACTIVE] = false
+        }
+    }
+
+    suspend fun setWarningActive(active: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_WARNING_ACTIVE] = active
         }
     }
 
     suspend fun setWarningPercent(percent: Int) {
         context.dataStore.edit { prefs ->
-            prefs[KEY_WARNING_PERCENT] = percent.coerceIn(50, 99)
+            prefs[KEY_WARNING_PERCENT] = percent.coerceIn(50, 95)
+            prefs[KEY_WARNING_ACTIVE] = false
         }
     }
 
@@ -86,7 +99,8 @@ class UserPreferences(private val context: Context) {
 
     suspend fun setGlobalQuotaBytes(bytes: Long) {
         context.dataStore.edit { prefs ->
-            prefs[KEY_GLOBAL_QUOTA_BYTES] = bytes
+            prefs[KEY_GLOBAL_QUOTA_BYTES] = bytes.coerceAtLeast(1L)
+            prefs[KEY_WARNING_ACTIVE] = false
         }
     }
 

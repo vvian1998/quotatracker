@@ -19,7 +19,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.quotatracker.app.service.DataMonitorService
 import com.quotatracker.app.service.DataUsageSyncWorker
 import com.quotatracker.app.ui.components.BottomNavBar
 import com.quotatracker.app.ui.navigation.Screen
@@ -46,12 +45,6 @@ class MainActivity : ComponentActivity() {
 
         // Schedule periodic background worker
         DataUsageSyncWorker.schedule(this)
-
-        // Start foreground monitor service if permission is already granted
-        if (PermissionUtils.hasUsageStatsPermission(this)) {
-            val serviceIntent = Intent(this, DataMonitorService::class.java)
-            startForegroundService(serviceIntent)
-        }
 
         setContent {
             QuotaTrackerTheme {
@@ -99,9 +92,6 @@ fun QuotaTrackerAppNav() {
             composable(Screen.Permission.route) {
                 PermissionScreen(
                     onAllPermissionsGranted = {
-                        val serviceIntent = Intent(context, DataMonitorService::class.java)
-                        context.startForegroundService(serviceIntent)
-
                         navController.navigate(Screen.Dashboard.route) {
                             popUpTo(Screen.Permission.route) { inclusive = true }
                         }
