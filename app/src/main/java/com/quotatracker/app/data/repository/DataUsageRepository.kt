@@ -146,6 +146,19 @@ class DataUsageRepository(
     }
 
     /**
+     * Delete history records older than [retainDays] to keep the local DB from growing forever.
+     * History screen only ever shows the last 30 days, so anything older is safe to drop.
+     */
+    suspend fun pruneOldHistory(retainDays: Int = 60) = withContext(Dispatchers.IO) {
+        try {
+            val cutoffEpochDay = DateUtils.todayEpochDay() - retainDays
+            dataUsageDao.pruneOldRecords(cutoffEpochDay)
+        } catch (e: Exception) {
+            Log.w(tag, "Failed to prune old history records: ${e.message}")
+        }
+    }
+
+    /**
      * Query today's data usage for a single UID (used by Floating Bubble)
      */
     suspend fun getTodayUsageForUid(uid: Int): Long = withContext(Dispatchers.IO) {

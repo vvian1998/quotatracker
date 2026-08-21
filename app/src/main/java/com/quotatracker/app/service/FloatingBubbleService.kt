@@ -73,6 +73,7 @@ class FloatingBubbleService : Service() {
     private var baselineTrafficBytes: Long = 0L
     private var prevTrafficBytes: Long = 0L
     private var prevTimestamp: Long = 0L
+    private var stoppedIntentionally = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -83,6 +84,7 @@ class FloatingBubbleService : Service() {
 
         if (!Settings.canDrawOverlays(this)) {
             Log.w(tag, "Overlay permission not granted. Stopping service.")
+            stoppedIntentionally = true
             stopSelf()
             return
         }
@@ -93,6 +95,7 @@ class FloatingBubbleService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == Constants.ACTION_STOP_BUBBLE) {
+            stoppedIntentionally = true
             stopSelf()
             return START_NOT_STICKY
         }
@@ -374,11 +377,13 @@ class FloatingBubbleService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                userPreferences.setBubbleEnabled(false)
-            } catch (e: Exception) {
-                Log.w(tag, "Error resetting bubble preference: ${e.message}")
+        if (stoppedIntentionally) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    userPreferences.setBubbleEnabled(false)
+                } catch (e: Exception) {
+                    Log.w(tag, "Error resetting bubble preference: ${e.message}")
+                }
             }
         }
         serviceScope.cancel()

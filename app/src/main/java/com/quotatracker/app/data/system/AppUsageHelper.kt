@@ -58,7 +58,10 @@ class AppUsageHelper(private val context: Context) {
                     endTime - (1000 * 60 * 120), // 2 hours
                     endTime
                 )
-                lastForegroundPkg = stats?.maxByOrNull { it.lastTimeUsed }?.packageName
+                lastForegroundPkg = stats
+                    ?.filter { it.packageName != "android" && it.packageName != "com.android.systemui" }
+                    ?.maxByOrNull { it.lastTimeUsed }
+                    ?.packageName
             }
 
             lastForegroundPkg

@@ -1,7 +1,6 @@
 package com.quotatracker.app.ui.screen.dashboard
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,22 +13,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -37,27 +30,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.quotatracker.app.domain.model.AppDataUsage
 import com.quotatracker.app.domain.model.UsagePeriod
 import com.quotatracker.app.ui.components.AppUsageCard
 import com.quotatracker.app.ui.components.PeriodSelector
-import com.quotatracker.app.ui.components.QuotaGauge
-import com.quotatracker.app.ui.theme.AmberAccent
-import com.quotatracker.app.ui.theme.BackgroundDark
-import com.quotatracker.app.ui.theme.CardBackground
-import com.quotatracker.app.ui.theme.CardBorder
-import com.quotatracker.app.ui.theme.CardShape
-import com.quotatracker.app.ui.theme.GaugePillShape
-import com.quotatracker.app.ui.theme.TealGlow
-import com.quotatracker.app.ui.theme.TealPrimary
-import com.quotatracker.app.ui.theme.TealVariant
+import com.quotatracker.app.ui.components.QuotaVoucherCard
+import com.quotatracker.app.ui.theme.FabShape
+import com.quotatracker.app.ui.theme.Ink
+import com.quotatracker.app.ui.theme.Lime
+import com.quotatracker.app.ui.theme.Surface
 import com.quotatracker.app.ui.theme.TextPrimary
 import com.quotatracker.app.ui.theme.TextSecondary
-import com.quotatracker.app.util.DataFormatter
 
 @Composable
 fun DashboardScreen(
@@ -67,25 +51,19 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        containerColor = BackgroundDark,
+        containerColor = Ink,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.toggleFloatingBubble(!uiState.isBubbleEnabled) },
-                containerColor = if (uiState.isBubbleEnabled) TealPrimary else CardBackground,
-                contentColor = if (uiState.isBubbleEnabled) BackgroundDark else TealPrimary,
-                shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
-                modifier = Modifier
-                    .border(
-                        width = 1.5.dp,
-                        color = if (uiState.isBubbleEnabled) TealVariant else CardBorder,
-                        shape = CircleShape
-                    )
+                containerColor = if (uiState.isBubbleEnabled) Lime else Surface,
+                contentColor = if (uiState.isBubbleEnabled) Ink else Lime,
+                shape = FabShape,
+                elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(defaultElevation = 0.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.ChatBubbleOutline,
                     contentDescription = "Toggle Floating Bubble",
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -93,129 +71,60 @@ fun DashboardScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(paddingValues)
         ) {
-            // App Bar Title
+            // App Bar
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "QuotaTracker",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                        fontSize = 22.sp
-                    )
+                    AppWordmark()
 
                     IconButton(
                         onClick = { viewModel.loadData() },
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(CardBackground)
+                            .size(36.dp)
+                            .clip(FabShape)
+                            .background(Surface)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh",
-                            tint = TealPrimary,
-                            modifier = Modifier.size(20.dp)
+                            tint = TextSecondary,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
             }
 
-            // Quota Ring Gauge
+            // Signature quota voucher card
             item {
-                Spacer(modifier = Modifier.height(8.dp))
                 val totalUsed = uiState.deviceSummary.grandTotal
                 val totalQuota = uiState.quotaSetting.quotaLimitBytes
 
-                QuotaGauge(
-                    usedBytes = totalUsed,
-                    totalQuotaBytes = totalQuota,
-                    subtitle = when (uiState.selectedPeriod) {
-                        UsagePeriod.DAILY -> "dipakai hari ini"
-                        UsagePeriod.WEEKLY -> "dipakai minggu ini"
-                        UsagePeriod.MONTHLY -> "dari kuota bulan ini"
-                    }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Download / Upload Pills
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    // Download Pill
-                    Surface(
-                        shape = GaugePillShape,
-                        color = CardBackground,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowDownward,
-                                contentDescription = "Download",
-                                tint = TealPrimary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = DataFormatter.formatBytes(uiState.deviceSummary.totalDownload),
-                                color = TextPrimary,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp
-                            )
+                Box(modifier = Modifier.padding(horizontal = 18.dp)) {
+                    QuotaVoucherCard(
+                        usedBytes = totalUsed,
+                        totalQuotaBytes = totalQuota,
+                        mobileBytes = uiState.deviceSummary.totalMobile,
+                        wifiBytes = uiState.deviceSummary.totalWifi,
+                        subtitleLabel = when (uiState.selectedPeriod) {
+                            UsagePeriod.DAILY -> "Kuota Hari Ini"
+                            UsagePeriod.WEEKLY -> "Kuota Minggu Ini"
+                            UsagePeriod.MONTHLY -> "Kuota Bulan Ini"
                         }
-                    }
-
-                    // Upload Pill
-                    Surface(
-                        shape = GaugePillShape,
-                        color = CardBackground,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowUpward,
-                                contentDescription = "Upload",
-                                tint = AmberAccent,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = DataFormatter.formatBytes(uiState.deviceSummary.totalUpload),
-                                color = TextPrimary,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp
-                            )
-                        }
-                    }
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(22.dp))
             }
 
-            // Period Selector (Hari Ini / Minggu / Bulan)
+            // Period tabs
             item {
-                Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                Box(modifier = Modifier.padding(horizontal = 18.dp)) {
                     PeriodSelector(
                         selectedPeriod = uiState.selectedPeriod,
                         onPeriodSelected = { viewModel.setPeriod(it) }
@@ -229,23 +138,19 @@ fun DashboardScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                        .padding(horizontal = 18.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "Penggunaan Aplikasi",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
+                            style = MaterialTheme.typography.titleMedium
                         )
                         if (uiState.isLoading) {
                             Spacer(modifier = Modifier.width(8.dp))
                             CircularProgressIndicator(
-                                color = TealPrimary,
+                                color = Lime,
                                 strokeWidth = 2.dp,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -254,9 +159,7 @@ fun DashboardScreen(
 
                     Text(
                         text = "${uiState.appUsageList.size} aplikasi",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        fontSize = 12.sp
+                        style = MaterialTheme.typography.labelSmall
                     )
                 }
             }
@@ -270,7 +173,7 @@ fun DashboardScreen(
                             .height(200.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = TealPrimary)
+                        CircularProgressIndicator(color = Lime)
                     }
                 }
             } else if (uiState.appUsageList.isEmpty()) {
@@ -285,36 +188,60 @@ fun DashboardScreen(
                         Text(
                             text = "Belum ada data penggunaan tercatat",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
                             color = TextPrimary
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "Mungkin perlu beberapa menit untuk sinkronisasi pertama atau pastikan izin Akses Penggunaan (Usage Access) telah diberikan.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            fontSize = 12.sp
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
             } else {
-                items(
-                    items = uiState.appUsageList,
-                    key = { it.uid }
-                ) { appUsage ->
+                itemsIndexed(uiState.appUsageList) { index, appUsage ->
                     AppUsageCard(
                         appUsage = appUsage,
                         maxUsageBytes = uiState.maxUsageBytes,
-                        onClick = { onAppClick(appUsage.uid) }
+                        onClick = { onAppClick(appUsage.uid) },
+                        index = index,
+                        modifier = Modifier.padding(horizontal = 14.dp)
                     )
                 }
             }
 
-            // Bottom Spacing for FAB
+            // Bottom Spacing for FAB and BottomNavBar
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(100.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun AppWordmark() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.padding(end = 8.dp)
+        ) {
+            val heights = listOf(5.dp, 8.dp, 11.dp, 14.dp)
+            heights.forEach { h ->
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(h)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(1.dp))
+                        .background(Lime)
+                )
+            }
+        }
+        Text(
+            text = "QuotaTracker",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+            )
+        )
     }
 }

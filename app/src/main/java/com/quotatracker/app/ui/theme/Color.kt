@@ -3,40 +3,64 @@ package com.quotatracker.app.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// Background & Surfaces (Navy / Charcoal palette)
-val BackgroundDark = Color(0xFF0F1923)
-val SurfaceDark = Color(0xFF16222F)
-val CardBackground = Color(0xFF1A2633)
-val CardBackgroundElevated = Color(0xFF223142)
-val CardBorder = Color(0x334E657E)
+// ============================================================
+// Design tokens v2 — "voucher / signal" redesign
+// Grounded in Indonesian prepaid data vernacular: scratch
+// vouchers, SIM signal bars, mobile-vs-WiFi quota accounting.
+// One bold accent (Lime), Ember reserved strictly for warnings.
+// ============================================================
+
+// Surfaces — ink graphite, not navy
+val Ink = Color(0xFF0A0C10)
+val Surface = Color(0xFF14171F)
+val SurfaceElevated = Color(0xFF1C202A)
+val Hairline = Color(0xFF262B36)
 
 // Accents
-val TealPrimary = Color(0xFF00BFA5)
-val TealVariant = Color(0xFF64FFDA)
-val TealGlow = Color(0x4000BFA5)
+val Lime = Color(0xFFC8FF3D)
+val LimeDim = Color(0xFF5C7A22)
+val Ember = Color(0xFFFF6B4A)
+val NeutralBucket = Color(0xFF31384A)
 
-val AmberAccent = Color(0xFFFFB300)
-val AmberGlow = Color(0x40FFB300)
+// Text
+val TextHi = Color(0xFFF5F6F2)
+val TextMid = Color(0xFF868C9C)
+val TextLow = Color(0xFF4B505E)
 
-val BlueWifi = Color(0xFF29B6F6)
-val BlueWifiGlow = Color(0x4029B6F6)
+// ------------------------------------------------------------
+// Legacy aliases — kept so every existing screen (Settings,
+// History, Detail, Onboarding, BottomNavBar…) inherits the new
+// palette automatically through MaterialTheme, without a
+// file-by-file rewrite. New code should prefer the tokens above;
+// these are the old names, repointed to v2 values.
+// ------------------------------------------------------------
+val BackgroundDark = Ink
+val SurfaceDark = Surface
+val CardBackground = Surface
+val CardBackgroundElevated = SurfaceElevated
+val CardBorder = Hairline.copy(alpha = 0.8f)
 
-val RedWarning = Color(0xFFFF5252)
-val RedWarningGlow = Color(0x40FF5252)
+val TealPrimary = Lime
+val TealVariant = Lime
+val TealGlow = Lime.copy(alpha = 0.18f)
 
-// Text Colors
-val TextPrimary = Color(0xFFFFFFFF)
-val TextSecondary = Color(0xFF8FA0B3)
-val TextMuted = Color(0xFF55697D)
+val AmberAccent = Ember
+val AmberGlow = Ember.copy(alpha = 0.18f)
 
-// Gradients
-val TealToAmberGradient = Brush.horizontalGradient(
-    colors = listOf(TealPrimary, AmberAccent)
-)
+val BlueWifi = Color(0xFF7C8AA6)
+val BlueWifiGlow = BlueWifi.copy(alpha = 0.15f)
 
-val CardGlowGradient = Brush.verticalGradient(
-    colors = listOf(CardBackgroundElevated, CardBackground)
-)
+val RedWarning = Ember
+val RedWarningGlow = Ember.copy(alpha = 0.18f)
 
-val BubbleGlassBackground = Color(0xD91A2633)
-val BubbleBorder = Color(0x8000BFA5)
+val TextPrimary = TextHi
+val TextSecondary = TextMid
+val TextMuted = TextLow
+
+// Gradients kept only for compile compatibility with older call
+// sites; the v2 design intentionally avoids gradients/glow.
+val TealToAmberGradient = Brush.horizontalGradient(colors = listOf(Lime, Ember))
+val CardGlowGradient = Brush.verticalGradient(colors = listOf(SurfaceElevated, Surface))
+
+val BubbleGlassBackground = Color(0xD914171F)
+val BubbleBorder = Color(0x80C8FF3D)

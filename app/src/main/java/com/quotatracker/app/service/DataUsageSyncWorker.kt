@@ -33,6 +33,7 @@ class DataUsageSyncWorker @AssistedInject constructor(
 
         return try {
             dataUsageRepository.syncTodayUsageToDb()
+            dataUsageRepository.pruneOldHistory()
             Log.d(tag, "Successfully synced daily usage records to Room DB.")
             Result.success()
         } catch (e: Exception) {

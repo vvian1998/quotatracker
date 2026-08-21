@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +60,8 @@ import com.quotatracker.app.ui.theme.TealPrimary
 import com.quotatracker.app.ui.theme.TextPrimary
 import com.quotatracker.app.ui.theme.TextSecondary
 import com.quotatracker.app.util.DataFormatter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 @Composable
@@ -114,15 +117,37 @@ fun AppDetailScreen(
 
                     Spacer(modifier = Modifier.width(16.dp))
 
-                    if (appUsage?.appIcon != null) {
-                        val bitmap = appUsage.appIcon.toBitmap(width = 72, height = 72)
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = appUsage.appName,
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                        )
+                    val iconDrawable = appUsage?.appIcon
+                    if (iconDrawable != null) {
+                        val bitmapState by produceState<android.graphics.Bitmap?>(
+                            initialValue = null,
+                            key1 = iconDrawable
+                        ) {
+                            value = withContext(Dispatchers.IO) {
+                                try {
+                                    iconDrawable.toBitmap(width = 72, height = 72)
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                        }
+                        val currentBitmap = bitmapState
+                        if (currentBitmap != null) {
+                            Image(
+                                bitmap = currentBitmap.asImageBitmap(),
+                                contentDescription = appUsage?.appName,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Android,
+                                contentDescription = null,
+                                tint = TealPrimary,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
                     } else {
                         Icon(
                             imageVector = Icons.Default.Android,

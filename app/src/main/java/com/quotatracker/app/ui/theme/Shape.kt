@@ -11,6 +11,13 @@ val Shapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp)
 )
 
+// v2 tokens
+val VoucherShape = RoundedCornerShape(20.dp)
+val FlatCardShape = RoundedCornerShape(10.dp)
+val AvatarShape = RoundedCornerShape(10.dp)
+val FabShape = RoundedCornerShape(16.dp)
+
+// legacy aliases — kept for existing screens
 val CardShape = RoundedCornerShape(16.dp)
 val ChipShape = RoundedCornerShape(24.dp)
 val BubbleShape = RoundedCornerShape(14.dp)
