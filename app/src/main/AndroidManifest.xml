@@ -58,6 +58,7 @@
         <!-- Floating Bubble Overlay Service -->
         <service
             android:name=".service.FloatingBubbleService"
+            android:foregroundServiceType="dataSync"
             android:exported="false" />
 
         <!-- Boot Receiver for Auto-start -->

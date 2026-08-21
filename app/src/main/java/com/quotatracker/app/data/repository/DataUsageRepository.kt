@@ -1,6 +1,7 @@
 package com.quotatracker.app.data.repository
 
 import android.util.Log
+import com.quotatracker.app.data.local.db.dao.DailyTotalUsage
 import com.quotatracker.app.data.local.db.dao.DataUsageDao
 import com.quotatracker.app.data.local.db.entity.AppDataUsageEntity
 import com.quotatracker.app.data.system.AppUsageHelper
@@ -138,14 +139,11 @@ class DataUsageRepository(
     /**
      * Get history daily totals from Room database
      */
-    fun getDailyTotals(daysBack: Int = 30) = flow {
+    fun getDailyTotals(daysBack: Int = 30): Flow<List<DailyTotalUsage>> {
         val todayEpoch = DateUtils.todayEpochDay()
         val startEpoch = todayEpoch - daysBack
-
-        dataUsageDao.getDailyTotalsBetween(startEpoch, todayEpoch).collect { totals ->
-            emit(totals)
-        }
-    }.flowOn(Dispatchers.IO)
+        return dataUsageDao.getDailyTotalsBetween(startEpoch, todayEpoch).flowOn(Dispatchers.IO)
+    }
 
     /**
      * Query today's data usage for a single UID (used by Floating Bubble)

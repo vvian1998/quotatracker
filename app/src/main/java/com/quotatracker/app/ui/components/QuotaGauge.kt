@@ -88,13 +88,12 @@ fun QuotaGauge(
             // Foreground progress arc with gradient
             if (animatedPercentage > 0f) {
                 val sweep = animatedPercentage * 360f
-                val brush = Brush.sweepGradient(
-                    colors = listOf(
-                        TealPrimary,
-                        if (percentage > 0.6f) AmberAccent else TealVariant,
-                        if (percentage > 0.85f) RedWarning else AmberAccent
-                    )
-                )
+                val gradientColors = when {
+                    percentage >= 0.85f -> listOf(TealPrimary, AmberAccent, RedWarning)
+                    percentage >= 0.6f -> listOf(TealPrimary, TealVariant, AmberAccent)
+                    else -> listOf(TealPrimary, TealVariant)
+                }
+                val brush = Brush.sweepGradient(colors = gradientColors)
 
                 drawArc(
                     brush = brush,

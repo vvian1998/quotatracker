@@ -107,7 +107,11 @@ class SettingsViewModel @Inject constructor(
                 action = if (enabled) Constants.ACTION_START_BUBBLE else Constants.ACTION_STOP_BUBBLE
             }
             if (enabled) {
-                context.startService(intent)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
             } else {
                 context.stopService(intent)
             }

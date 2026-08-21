@@ -33,17 +33,26 @@ class AppUsageHelper(private val context: Context) {
     fun getCurrentForegroundPackage(): String? {
         val usm = usageStatsManager ?: return null
         val endTime = System.currentTimeMillis()
-        val startTime = endTime - 15_000L // 15s window
+        val startTime = endTime - 30_000L // 30s window
 
         return try {
             val events = usm.queryEvents(startTime, endTime)
             var lastForegroundPkg: String? = null
+            var lastEventTime = 0L
             val event = UsageEvents.Event()
 
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
-                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
-                    lastForegroundPkg = event.packageName
+                when (event.eventType) {
+                    UsageEvents.Event.ACTIVITY_RESUMED -> {
+                        lastForegroundPkg = event.packageName
+                        lastEventTime = event.timeStamp
+                    }
+                    UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED -> {
+                        if (event.packageName == lastForegroundPkg && event.timeStamp >= lastEventTime) {
+                            lastForegroundPkg = null
+                        }
+                    }
                 }
             }
             lastForegroundPkg

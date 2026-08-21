@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +50,8 @@ import com.quotatracker.app.ui.theme.TealVariant
 import com.quotatracker.app.ui.theme.TextPrimary
 import com.quotatracker.app.ui.theme.TextSecondary
 import com.quotatracker.app.util.DataFormatter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AppUsageCard(
@@ -83,16 +86,43 @@ fun AppUsageCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
             ) {
-                // App Icon
-                if (appUsage.appIcon != null) {
-                    val bitmap = appUsage.appIcon.toBitmap(width = 80, height = 80)
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = appUsage.appName,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                    )
+                // App Icon (Loaded off main thread)
+                val iconDrawable = appUsage.appIcon
+                if (iconDrawable != null) {
+                    val bitmapState by produceState<android.graphics.Bitmap?>(initialValue = null, key1 = iconDrawable) {
+                        value = withContext(Dispatchers.IO) {
+                            try {
+                                iconDrawable.toBitmap(width = 80, height = 80)
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                    }
+                    val currentBitmap = bitmapState
+                    if (currentBitmap != null) {
+                        Image(
+                            bitmap = currentBitmap.asImageBitmap(),
+                            contentDescription = appUsage.appName,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(CardBackgroundElevated),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Android,
+                                contentDescription = null,
+                                tint = TealPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
                 } else {
                     Box(
                         modifier = Modifier

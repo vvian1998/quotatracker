@@ -2,6 +2,7 @@ package com.quotatracker.app.ui.screen.dashboard
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quotatracker.app.data.local.preferences.UserPreferences
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -68,8 +70,11 @@ class DashboardViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             // 1. Quota
-            quotaRepository.getGlobalQuota().collect { quota ->
+            try {
+                val quota = quotaRepository.getGlobalQuota().first()
                 _uiState.value = _uiState.value.copy(quotaSetting = quota)
+            } catch (e: Exception) {
+                // Keep existing quota if error
             }
         }
 
@@ -112,7 +117,11 @@ class DashboardViewModel @Inject constructor(
                 action = if (enabled) Constants.ACTION_START_BUBBLE else Constants.ACTION_STOP_BUBBLE
             }
             if (enabled) {
-                context.startService(intent)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
             } else {
                 context.stopService(intent)
             }

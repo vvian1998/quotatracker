@@ -276,7 +276,7 @@ class FloatingBubbleService : Service() {
                         appUsageHelper.getCurrentForegroundPackage()
                     }
 
-                    if (foregroundPackage != null && foregroundPackage != packageName) {
+                    if (!foregroundPackage.isNullOrEmpty() && foregroundPackage != packageName) {
                         if (foregroundPackage != currentTrackedPackage) {
                             currentTrackedPackage = foregroundPackage
                             val appInfo = withContext(Dispatchers.IO) {
@@ -298,6 +298,14 @@ class FloatingBubbleService : Service() {
                     } else if (foregroundPackage == packageName) {
                         textAppName?.text = "QuotaTracker"
                         textUsage?.text = "Aktif memantau"
+                    } else {
+                        // Retain last known package info and update usage counter if available
+                        if (currentTrackedUid > 0) {
+                            val todayUsage = withContext(Dispatchers.IO) {
+                                dataUsageRepository.getTodayUsageForUid(currentTrackedUid)
+                            }
+                            textUsage?.text = "↓ ${DataFormatter.formatBytes(todayUsage)}"
+                        }
                     }
                 } catch (e: Exception) {
                     Log.w(tag, "Error in bubble tracking loop: ${e.message}")
@@ -318,15 +326,23 @@ class FloatingBubbleService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        serviceScope.cancel()
-        serviceScope.launch {
-            userPreferences.setBubbleEnabled(false)
-        }
-        bubbleContainer?.let {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                windowManager?.removeView(it)
+                userPreferences.setBubbleEnabled(false)
+            } catch (e: Exception) {
+                Log.w(tag, "Error resetting bubble preference: ${e.message}")
+            }
+        }
+        serviceScope.cancel()
+        bubbleContainer?.let { view ->
+            try {
+                if (view.isAttachedToWindow) {
+                    windowManager?.removeView(view)
+                }
             } catch (e: Exception) {
                 Log.w(tag, "Error removing bubble view: ${e.message}")
+            } finally {
+                bubbleContainer = null
             }
         }
     }

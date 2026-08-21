@@ -233,12 +233,24 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Penggunaan Aplikasi",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Penggunaan Aplikasi",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        if (uiState.isLoading) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            CircularProgressIndicator(
+                                color = TealPrimary,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
 
                     Text(
                         text = "${uiState.appUsageList.size} aplikasi",
@@ -263,16 +275,26 @@ fun DashboardScreen(
                 }
             } else if (uiState.appUsageList.isEmpty()) {
                 item {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(180.dp),
-                        contentAlignment = Alignment.Center
+                            .padding(horizontal = 32.dp, vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = "Belum ada data penggunaan tercatat",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Mungkin perlu beberapa menit untuk sinkronisasi pertama atau pastikan izin Akses Penggunaan (Usage Access) telah diberikan.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
+                            color = TextSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            fontSize = 12.sp
                         )
                     }
                 }

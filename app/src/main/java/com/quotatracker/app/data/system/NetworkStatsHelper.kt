@@ -176,7 +176,7 @@ class NetworkStatsHelper(private val context: Context) {
             val bucket = NetworkStats.Bucket()
             while (stats.hasNextBucket()) {
                 stats.getNextBucket(bucket)
-                if (bucket.uid > 0) {
+                if (bucket.uid >= 10000) {
                     onBucket(bucket.uid, bucket.rxBytes, bucket.txBytes)
                 }
             }
